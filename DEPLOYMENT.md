@@ -114,6 +114,15 @@ APP_DEBUG=false
 **Websites (required - at least one):**
 ```
 APP_WEBSITE_1_NAME=My Site
+APP_WEBSITE_1_SHARE_URL=https://umami.mysite.com/share/your-share-id-here
+APP_WEBSITE_1_RECIPIENTS=me@example.com
+APP_WEBSITE_1_TIMEZONE=UTC
+```
+> **Note:** Get your share URL from the Umami dashboard → Share → Copy URL
+
+**Or use username/password:**
+```
+APP_WEBSITE_1_NAME=My Site
 APP_WEBSITE_1_BASE_URL=https://umami.mysite.com
 APP_WEBSITE_1_ID=550e8400-e29b-41d4-a716-446655440000
 APP_WEBSITE_1_USERNAME=umami-user

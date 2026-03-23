@@ -9,6 +9,7 @@ This fork adds the following to the original project:
 - **Environment variable configuration** - All settings (SMTP, app, and websites) can be configured via environment variables
 - **No secrets in config files** - Keep credentials out of version control
 - **Easy multi-site management** - Configure multiple Umami websites with numbered environment variables
+- **Share URL authentication** - Use Umami's share URLs for passwordless authentication (no username/password required)
 
 See [DEPLOYMENT.md](DEPLOYMENT.md) for Dokploy setup instructions.
 
@@ -65,25 +66,32 @@ tls = true
 
 [websites.example]
 disabled = true
-base_url = "https://analytics.example.com"
-id = "e97f683e-12e8-4fb5-970b-f5171804fe21"
+# Recommended: Use share_url for passwordless authentication
+share_url = "https://analytics.example.com/share/your-share-id-here"
 name = "Example Website"
-username = "your-username"
-password = "your-password"
 recipients = ["user@example.com"]
 timezone = "UTC"
 
+# Or use traditional username/password authentication:
+# base_url = "https://analytics.example.com"
+# id = "e97f683e-12e8-4fb5-970b-f5171804fe21"
+# username = "your-username"
+# password = "your-password"
+
 [websites.example-io]
-base_url = "https://umami.example.com"
-id = "e4de62a3-d40a-40da-b900-3ea016893f38"
+share_url = "https://umami.example.com/share/another-share-id"
 name = "example.io"
-username = "umami-user"
-password = "hunter2"
 recipients = [
     "user2@example.com",
     "user3@example.com",
 ]
 timezone = "Asia/Kolkata"
+
+# Or use traditional username/password authentication:
+# base_url = "https://umami.example.com"
+# id = "e4de62a3-d40a-40da-b900-3ea016893f38"
+# username = "umami-user"
+# password = "hunter2"
 
 ```
 
