@@ -177,7 +177,7 @@ impl ReportGenerator {
         let time_spent = helpers::format_time_spent(stats.total_time.value, stats.visits.value);
 
         let pages = client
-            .get_metrics(token, website_id, "url", start_at, end_at, 10, auth_mode)
+            .get_metrics(token, website_id, "path", start_at, end_at, 10, auth_mode)
             .await?;
 
         let countries = client

@@ -174,10 +174,16 @@ impl UmamiClient {
         T: for<'de> serde::Deserialize<'de>,
     {
         match response.status() {
-            StatusCode::OK => response
-                .json::<T>()
-                .await
-                .map_err(|e| AppError::api(format!("Failed to parse API response: {e}"))),
+            StatusCode::OK => {
+                let body = response.text().await.map_err(|e| {
+                    AppError::api(format!("Failed to read response body: {e}"))
+                })?;
+                debug!("Response body: {}", body);
+                serde_json::from_str(&body).map_err(|e| {
+                    error!("Failed to parse response: {e}\nBody: {body}");
+                    AppError::api(format!("Failed to parse API response: {e}\nBody: {body}"))
+                })
+            }
             StatusCode::UNAUTHORIZED => {
                 error!("API authentication failed");
                 Err(AppError::api("Authentication token expired or invalid"))
@@ -252,11 +258,18 @@ mod tests {
         let client = UmamiClient::new(server.url()).unwrap();
 
         let stats = json!({
-            "pageviews": { "value": 100, "prev": 90 },
-            "visitors": { "value": 50, "prev": 45 },
-            "visits": { "value": 75, "prev": 70 },
-            "bounces": { "value": 20, "prev": 25 },
-            "totaltime": { "value": 3600, "prev": 3300 }
+            "pageviews": 100,
+            "visitors": 50,
+            "visits": 75,
+            "bounces": 20,
+            "totaltime": 3600,
+            "comparison": {
+                "pageviews": 90,
+                "visitors": 45,
+                "visits": 70,
+                "bounces": 25,
+                "totaltime": 3300
+            }
         });
 
         let _mock = server
