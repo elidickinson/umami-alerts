@@ -6,18 +6,6 @@ use std::env;
 /// Load configuration from environment variables.
 /// Returns None if no environment variables are set.
 pub fn load_from_env() -> Option<Config> {
-    // Check if we have some SMTP config but not all - warn the user
-    let has_partial_smtp = [
-        env::var("SMTP_HOST").is_ok(),
-        env::var("SMTP_PORT").is_ok(),
-        env::var("SMTP_USERNAME").is_ok(),
-        env::var("SMTP_PASSWORD").is_ok(),
-        env::var("SMTP_FROM").is_ok(),
-    ]
-    .iter()
-    .filter(|&&x| x)
-    .count();
-
     let smtp_host = env::var("SMTP_HOST").ok()?;
     let smtp_port = env::var("SMTP_PORT").ok()?;
     let smtp_username = env::var("SMTP_USERNAME").ok()?;
