@@ -5,9 +5,6 @@ use std::sync::Arc;
 use tokio::sync::Semaphore;
 use tracing::{debug, error, info};
 
-// Load .env file if it exists
-let _ = dotenvy::dotenv();
-
 mod api;
 mod config;
 mod error;
@@ -40,6 +37,9 @@ struct Args {
 
 #[tokio::main]
 async fn main() {
+    // Load .env file if it exists
+    let _ = dotenvy::dotenv();
+
     let args = Args::parse();
 
     // Initialize logging with full error details

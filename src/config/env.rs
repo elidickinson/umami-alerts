@@ -1,12 +1,23 @@
-use std::env;
-
-use crate::error::{AppError, Result};
-use crate::config::models::{Config, WebsiteConfig};
 use std::collections::HashMap;
+
+use crate::config::models::{Config, WebsiteConfig};
+use std::env;
 
 /// Load configuration from environment variables.
 /// Returns None if no environment variables are set.
 pub fn load_from_env() -> Option<Config> {
+    // Check if we have some SMTP config but not all - warn the user
+    let has_partial_smtp = [
+        env::var("SMTP_HOST").is_ok(),
+        env::var("SMTP_PORT").is_ok(),
+        env::var("SMTP_USERNAME").is_ok(),
+        env::var("SMTP_PASSWORD").is_ok(),
+        env::var("SMTP_FROM").is_ok(),
+    ]
+    .iter()
+    .filter(|&&x| x)
+    .count();
+
     let smtp_host = env::var("SMTP_HOST").ok()?;
     let smtp_port = env::var("SMTP_PORT").ok()?;
     let smtp_username = env::var("SMTP_USERNAME").ok()?;
@@ -15,10 +26,18 @@ pub fn load_from_env() -> Option<Config> {
 
     tracing::info!("Loading configuration from environment variables");
 
-    let mut config = Config {
+    let smtp_port_parsed = smtp_port.parse();
+    if smtp_port_parsed.is_err() {
+        tracing::warn!(
+            "Invalid SMTP_PORT value '{}', using default 587",
+            smtp_port
+        );
+    }
+
+    let config = Config {
         smtp: crate::config::models::SmtpConfig {
             host: smtp_host,
-            port: smtp_port.parse().unwrap_or(587),
+            port: smtp_port_parsed.unwrap_or(587),
             username: smtp_username,
             password: smtp_password,
             from: smtp_from,
@@ -70,22 +89,21 @@ fn load_websites_from_env() -> HashMap<String, WebsiteConfig> {
             .filter(|t| !t.is_empty())
             .unwrap_or_else(|| "UTC".to_string());
 
-        let recipients =
-            match env::var(&format!("{}RECIPIENTS", prefix)).ok().or(Some(String::new())) {
-                Some(r) if !r.is_empty() => r
-                    .split(',')
-                    .map(|s| s.trim().to_string())
-                    .collect(),
-                _ => {
-                    tracing::warn!(
-                        "Website {} ({}) missing required RECIPIENTS field, skipping",
-                        i,
-                        name
-                    );
-                    i += 1;
-                    continue;
-                }
-            };
+        let recipients = match env::var(&format!("{}RECIPIENTS", prefix)) {
+            Ok(r) if !r.is_empty() => r
+                .split(',')
+                .map(|s| s.trim().to_string())
+                .collect(),
+            _ => {
+                tracing::warn!(
+                    "Website {} ({}) missing required RECIPIENTS field, skipping",
+                    i,
+                    name
+                );
+                i += 1;
+                continue;
+            }
+        };
 
         let key = format!("website_{}", i);
         websites.insert(
