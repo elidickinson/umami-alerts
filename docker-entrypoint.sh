@@ -37,6 +37,7 @@ while true; do
     WEBSITE_ID=$(printenv "${prefix}ID" 2>/dev/null || true)
     USERNAME=$(printenv "${prefix}USERNAME" 2>/dev/null || true)
     PASSWORD=$(printenv "${prefix}PASSWORD" 2>/dev/null || true)
+    SHARE_ID=$(printenv "${prefix}SHARE_ID" 2>/dev/null || true)
     RECIPIENTS=$(printenv "${prefix}RECIPIENTS" 2>/dev/null || true)
     TIMEZONE=$(printenv "${prefix}TIMEZONE" 2>/dev/null || true)
     TIMEZONE="${TIMEZONE:-UTC}"
@@ -55,23 +56,58 @@ while true; do
     fi
 
     # Skip if missing required fields
-    if [ -z "$BASE_URL" ] || [ -z "$WEBSITE_ID" ] || [ -z "$USERNAME" ] || [ -z "$PASSWORD" ] || [ -z "$RECIPIENTS" ]; then
+    # Two auth modes: SHARE_ID OR (ID + USERNAME + PASSWORD)
+    if [ -z "$BASE_URL" ] || [ -z "$RECIPIENTS" ]; then
         echo "WARNING: Website $i (${NAME}) missing required fields, skipping"
         i=$((i + 1))
         continue
     fi
 
+    # Validate authentication
+    if [ -n "$SHARE_ID" ]; then
+        debug="Using share_id authentication"
+    elif [ -z "$WEBSITE_ID" ] || [ -z "$USERNAME" ] || [ -z "$PASSWORD" ]; then
+        echo "WARNING: Website $i (${NAME}) - must provide SHARE_ID or (ID/USERNAME/PASSWORD), skipping"
+        i=$((i + 1))
+        continue
+    else
+        debug="Using username/password authentication"
+    fi
+
     # Convert recipients to TOML array format
     TOML_RECIPIENTS=$(recipients_to_toml "$RECIPIENTS")
 
-    # Generate TOML for this website
+    # Start TOML section
     WEBSITE_CONFIG="${WEBSITE_CONFIG}
 [websites.website_${i}]
 name = \"$(escape_toml "$NAME")\"
-base_url = \"$(escape_toml "$BASE_URL")\"
-id = \"$(escape_toml "$WEBSITE_ID")\"
-username = \"$(escape_toml "$USERNAME")\"
-password = \"$(escape_toml "$PASSWORD")\"
+base_url = \"$(escape_toml "$BASE_URL")\""
+
+    # Add optional id (required for username/password mode)
+    if [ -n "$WEBSITE_ID" ]; then
+        WEBSITE_CONFIG="${WEBSITE_CONFIG}
+id = \"$(escape_toml "$WEBSITE_ID")\""
+    fi
+
+    # Add optional username
+    if [ -n "$USERNAME" ]; then
+        WEBSITE_CONFIG="${WEBSITE_CONFIG}
+username = \"$(escape_toml "$USERNAME")\""
+    fi
+
+    # Add optional password
+    if [ -n "$PASSWORD" ]; then
+        WEBSITE_CONFIG="${WEBSITE_CONFIG}
+password = \"$(escape_toml "$PASSWORD")\""
+    fi
+
+    # Add optional share_id
+    if [ -n "$SHARE_ID" ]; then
+        WEBSITE_CONFIG="${WEBSITE_CONFIG}
+share_id = \"$(escape_toml "$SHARE_ID")\""
+    fi
+
+    WEBSITE_CONFIG="${WEBSITE_CONFIG}
 recipients = ${TOML_RECIPIENTS}
 timezone = \"$(escape_toml "$TIMEZONE")\"
 "
@@ -97,15 +133,6 @@ if [ "$USE_ENV_VARS" = "true" ]; then
     echo "Generating config.toml from environment variables..."
     echo "Found ${WEBSITE_COUNT} website(s) configured"
 
-    # Ensure config directory exists
-    mkdir -p /etc/umami-alerts
-
-    # Remove existing config if present (to avoid appending to old version)
-    if [ -f /etc/umami-alerts/config.toml ]; then
-        rm /etc/umami-alerts/config.toml
-    fi
-
-    # Generate config.toml
     # Normalize boolean values to lowercase for TOML
     APP_DEBUG_NORM=$(echo "${APP_DEBUG:-false}" | tr '[:upper:]' '[:lower:]')
     APP_DRY_RUN_NORM=$(echo "${APP_DRY_RUN:-false}" | tr '[:upper:]' '[:lower:]')

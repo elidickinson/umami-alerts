@@ -2,7 +2,7 @@ use reqwest::{Client, StatusCode};
 use std::time::Duration;
 use tracing::{debug, error, instrument};
 
-use super::models::{AuthResponse, Metric, Stats};
+use super::models::{AuthResponse, Metric, ShareResponse, Stats};
 use crate::error::{AppError, Result};
 
 const API_TIMEOUT: Duration = Duration::from_secs(30);
@@ -59,6 +59,20 @@ impl UmamiClient {
                 )))
             }
         }
+    }
+
+    #[instrument(skip(self))]
+    pub async fn authenticate_with_share(&self, share_id: &str) -> Result<ShareResponse> {
+        debug!("Authenticating with Umami Share API");
+
+        let response = self
+            .client
+            .get(format!("{}/api/share/{}", self.base_url, share_id))
+            .send()
+            .await
+            .map_err(|e| AppError::api(format!("Share request failed: {e}")))?;
+
+        self.handle_response(response).await
     }
 
     #[instrument(skip(self, token))]

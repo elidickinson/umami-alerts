@@ -37,13 +37,24 @@ This guide shows how to deploy umami-alerts to Dokploy using environment variabl
 
 Configure one or more websites using numbered environment variables:
 
+
+Configure one or more websites using numbered environment variables:
+
 **For Website 1:**
 ```
 APP_WEBSITE_1_NAME=My Website
 APP_WEBSITE_1_BASE_URL=https://umami.example.com
+# Authentication - choose ONE method:
+
+# Method 1: Share URL (recommended - no password needed)
+APP_WEBSITE_1_SHARE_ID=your-share-id-from-url
+
+# Method 2: Username/Password (traditional)
 APP_WEBSITE_1_ID=your-website-uuid
 APP_WEBSITE_1_USERNAME=umami-user
 APP_WEBSITE_1_PASSWORD=umami-password
+
+# Recipients and timezone (required for both methods)
 APP_WEBSITE_1_RECIPIENTS=user1@example.com,user2@example.com
 APP_WEBSITE_1_TIMEZONE=UTC
 APP_WEBSITE_1_DISABLED=false  # Optional, defaults to false
@@ -53,16 +64,10 @@ APP_WEBSITE_1_DISABLED=false  # Optional, defaults to false
 ```
 APP_WEBSITE_2_NAME=Blog
 APP_WEBSITE_2_BASE_URL=https://analytics.yourdomain.com
-APP_WEBSITE_2_ID=another-website-uuid
-APP_WEBSITE_2_USERNAME=admin
-APP_WEBSITE_2_PASSWORD=secure-password
+APP_WEBSITE_2_SHARE_ID=another-share-id
 APP_WEBSITE_2_RECIPIENTS=admin@example.com
 APP_WEBSITE_2_TIMEZONE=America/New_York
 ```
-
-> **Note:** Numbers must be sequential starting from 1. Missing numbers will stop detection. Use `APP_WEBSITE_X_DISABLED=true` to skip a website without breaking the sequence.
-
----
 
 ## Dokploy Setup Steps
 

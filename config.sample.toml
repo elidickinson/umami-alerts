@@ -48,16 +48,25 @@ tls = true
 # Remove this or set to false to enable processing this section.
 disabled = true
 base_url = "https://analytics.example.com"
+
+# Authentication: Select ONE method
+
+# Method 1: Share URL authentication (recommended, no password needed)
+# Get the share ID from your Umami dashboard's Share URL: https://umami.example.com/share/xxxxx
+# share_id = "your-share-id-here"
+
+# Method 2: Username/Password authentication (traditional)
 # The UUID for the website to generate the report for.
 # Can be found under the website settings.
 id = "e97f683e-12e8-4fb5-970b-f5171804fe21"
-# Set this to a sitename, or a URL. Whatever flaots your boat.
-name = "Example Website"
 # Umami does not have the concept of "API Keys". Instead, these keys
 # are generated on each login. So a username and password with access
 # is required here.
 username = "your-username"
 password = "your-password"
+
+# Set this to a sitename, or a URL. Whatever flaots your boat.
+name = "Example Website"
 # Email reports are generated and sent per website.
 recipients = ["user@example.com"]
 # The timezone to be used for the website. This impacts the report data

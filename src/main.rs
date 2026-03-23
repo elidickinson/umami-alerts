@@ -135,10 +135,18 @@ async fn process_website(state: &AppState, site_name: &str, website: &WebsiteCon
     // Create API client
     let client = UmamiClient::new(website.base_url.clone())?;
 
-    // Authenticate
-    let token = client
-        .authenticate(&website.username, &website.password)
-        .await?;
+    // Authenticate and get website_id
+    let (token, website_id) = if let Some(share_id) = &website.share_id {
+        info!("Using Share ID for authentication");
+        let share = client.authenticate_with_share(share_id).await?;
+        (share.token, share.website_id)
+    } else {
+        info!("Using username/password for authentication");
+        let token = client
+            .authenticate(&website.username, &website.password)
+            .await?;
+        (token, website.id.clone())
+    };
 
     // Generate and send report
     state
@@ -147,6 +155,7 @@ async fn process_website(state: &AppState, site_name: &str, website: &WebsiteCon
             &client,
             &state.config.app.dry_run,
             website,
+            &website_id,
             &state.config.app.report_type,
             &state.config.smtp,
             &token,

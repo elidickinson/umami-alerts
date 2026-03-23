@@ -26,3 +26,10 @@ pub struct Metric {
 pub(crate) struct AuthResponse {
     pub token: String,
 }
+
+#[derive(Debug, Deserialize)]
+pub struct ShareResponse {
+    pub token: String,
+    #[serde(rename = "websiteId")]
+    pub website_id: String,
+}

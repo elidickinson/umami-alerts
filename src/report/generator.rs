@@ -40,6 +40,7 @@ impl ReportGenerator {
         client: &UmamiClient,
         dry_run: &bool,
         website: &WebsiteConfig,
+        website_id: &str,
         report_type: &ReportType,
         smtp_config: &SmtpConfig,
         token: &str,
@@ -48,7 +49,7 @@ impl ReportGenerator {
 
         let time_range = self.calculate_time_range(&website.timezone, report_type)?;
         let report_data = self
-            .fetch_report_data(client, website, token, time_range, report_type)
+            .fetch_report_data(client, website, website_id, token, time_range, report_type)
             .await?;
         let html = self.render_report(&report_data)?;
 
@@ -133,6 +134,7 @@ impl ReportGenerator {
         &self,
         client: &UmamiClient,
         website: &WebsiteConfig,
+        website_id: &str,
         token: &str,
         time_range: TimeRange,
         report_type: &ReportType,
@@ -146,7 +148,7 @@ impl ReportGenerator {
         let end_at = time_range.end.timestamp_millis();
 
         let stats = client
-            .get_stats(token, &website.id, start_at, end_at)
+            .get_stats(token, website_id, start_at, end_at)
             .await?;
 
         let bounce_rate = MetricValue {
@@ -165,23 +167,23 @@ impl ReportGenerator {
         let time_spent = helpers::format_time_spent(stats.total_time.value, stats.visits.value);
 
         let pages = client
-            .get_metrics(token, &website.id, "url", start_at, end_at, 10)
+            .get_metrics(token, website_id, "url", start_at, end_at, 10)
             .await?;
 
         let countries = client
-            .get_metrics(token, &website.id, "country", start_at, end_at, 10)
+            .get_metrics(token, website_id, "country", start_at, end_at, 10)
             .await?;
 
         let browsers = client
-            .get_metrics(token, &website.id, "browser", start_at, end_at, 5)
+            .get_metrics(token, website_id, "browser", start_at, end_at, 5)
             .await?;
 
         let devices = client
-            .get_metrics(token, &website.id, "device", start_at, end_at, 5)
+            .get_metrics(token, website_id, "device", start_at, end_at, 5)
             .await?;
 
         let referrers = client
-            .get_metrics(token, &website.id, "referrer", start_at, end_at, 5)
+            .get_metrics(token, website_id, "referrer", start_at, end_at, 5)
             .await?;
 
         Ok(ReportData {
