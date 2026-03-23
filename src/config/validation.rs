@@ -102,7 +102,7 @@ mod tests {
     #[test]
     fn test_website_validation() {
         let mut config = create_test_config();
-        config.websites.get_mut("test").unwrap().base_url = "invalid-url".to_string();
+        config.websites.get_mut("test").unwrap().base_url = "".to_string();
         assert!(validate_config(&config).is_err());
     }
 

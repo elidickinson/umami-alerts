@@ -3,7 +3,7 @@ use futures::stream::{self, StreamExt};
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::sync::Semaphore;
-use tracing::{debug, error, info, Level};
+use tracing::{debug, error, info};
 
 mod api;
 mod config;
@@ -53,16 +53,10 @@ async fn main() {
 
     tracing_subscriber::fmt()
         .with_env_filter(env_filter)
-        .with_max_level(if args.debug {
-            Level::DEBUG
-        } else {
-            Level::INFO
-        })
         .with_file(true)
         .with_line_number(true)
         .with_thread_ids(true)
         .with_target(false)
-        .with_span_list(false)
         .pretty()
         .with_thread_names(true)
         .with_level(true)
@@ -80,12 +74,7 @@ async fn main() {
                 src = next_src.source();
             }
         }
-        
-        // Show backtrace if available
-        if std::env::var("RUST_BACKTRACE").is_ok() {
-            error!("{:?}", e);
-        }
-        
+
         std::process::exit(1);
     }
 }
@@ -144,7 +133,7 @@ async fn run_app(args: Args) -> Result<()> {
                 match process_website(&state, name, website).await {
                     Ok(_) => Ok(name.to_string()),
                     Err(e) => {
-                        let _ = tracing::error!("Website {} failed: {} (chain: {:?})", name, e, e);
+                        error!("Website {} failed: {} (chain: {:?})", name, e, e);
                         Err((name.to_string(), e))
                     }
                 }
@@ -171,8 +160,8 @@ async fn run_app(args: Args) -> Result<()> {
         error!("Failed websites: {}", failed_sites.join(", "));
         
         // Log full error details for each failure
-        for (site, err) in &failures {
-            let err = err.as_ref().unwrap_err();
+        for failure in &failures {
+            let (site, err) = failure.as_ref().unwrap_err();
             error!("[{}]: Error: {}", site, err);
             if let Some(source) = std::error::Error::source(err) {
                 error!("[{}]: Caused by: {}", site, source);
@@ -192,18 +181,73 @@ async fn run_app(args: Args) -> Result<()> {
 
     Ok(())
 }
+
+async fn process_website(state: &AppState, site_name: &str, website: &WebsiteConfig) -> Result<()> {
+    info!("Processing website: {}", site_name);
+
+    // Resolve effective auth parameters
+    let effective_share_url = website.share_url.as_deref().filter(|s| !s.is_empty());
+    let effective_share_id = website.share_id.as_deref().filter(|s| !s.is_empty());
+
+    // Authenticate and get website_id
+    let (client, token, website_id) = if let Some(share_url) = effective_share_url {
+        info!("Using share URL for authentication");
+
+        // Parse share URL to extract base_url and share_id
+        let parsed = url::Url::parse(share_url)
+            .map_err(|e| AppError::Config(format!("Invalid share URL: {e}")))?;
+
+        // Get path segments and find the share ID
+        let path_segments: Vec<&str> = parsed.path_segments()
+            .map(|s| s.collect())
+            .unwrap_or_default();
+
+        let share_idx = path_segments.iter().position(|&s| s == "share")
+            .ok_or_else(|| AppError::Config(format!("share URL missing /share/ path: {share_url}")))?;
+
+        let share_id = path_segments.get(share_idx + 1)
+            .filter(|s| !s.is_empty())
+            .ok_or_else(|| AppError::Config(format!("share URL missing share ID: {share_url}")))?;
+
+        // Reconstruct base URL without /share/xxxxx
+        let path_prefix = if share_idx > 0 {
+            format!("/{}", path_segments[..share_idx].join("/"))
+        } else {
+            String::new()
+        };
+        let base_url = format!(
+            "{}://{}{}",
+            parsed.scheme(),
+            parsed.authority(),
+            path_prefix
+        );
+
+        info!("  Extracted: base_url={}, share_id={}", base_url, share_id);
+
+        let client = crate::api::UmamiClient::new(base_url)?;
+        let share = client.authenticate_with_share(share_id).await?;
+        (client, share.token, share.website_id)
+    } else if let Some(share_id) = effective_share_id {
+        info!("Using Share ID for authentication");
+        let client = crate::api::UmamiClient::new(website.base_url.clone())?;
+        let share = client.authenticate_with_share(share_id).await?;
+        (client, share.token, share.website_id)
+    } else {
+        info!("Using username/password for authentication");
+        let client = crate::api::UmamiClient::new(website.base_url.clone())?;
+        let token = client
+            .authenticate(&website.username, &website.password)
             .await?;
         (client, token, website.id.clone())
     };
 
-    // Generate and send report
     // Determine auth mode
     let auth_mode = if effective_share_url.is_some() || effective_share_id.is_some() {
         AuthMode::Share
     } else {
         AuthMode::Bearer
     };
-    
+
     state
         .report_generator
         .generate_and_send(
