@@ -18,6 +18,9 @@ FROM alpine:3.21
 
 RUN apk add --no-cache tini
 
+# Create config directory
+RUN mkdir -p /etc/umami-alerts
+
 COPY --from=builder /build/target/release/umami-alerts /usr/local/bin/umami-alerts
 COPY docker-entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
