@@ -68,6 +68,8 @@ mod tests {
                         base_url: "https://analytics.example.com".to_string(),
                         username: "test".to_string(),
                         password: "password".to_string(),
+                        share_id: None,
+                        share_url: None,
                         recipients: vec!["admin@example.com".to_string()],
                         timezone: "UTC".to_string(),
                         disabled: false,

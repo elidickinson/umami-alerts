@@ -90,6 +90,7 @@ pub struct WebsiteConfig {
     #[serde(default)]
     pub id: String,
     pub name: String,
+    #[serde(default)]
     pub base_url: String,
     #[serde(default)]
     pub username: String,
@@ -97,6 +98,8 @@ pub struct WebsiteConfig {
     pub password: String,
     #[serde(default)]
     pub share_id: Option<String>,
+    #[serde(default)]
+    pub share_url: Option<String>,
     pub recipients: Vec<String>,
     #[serde(default = "default_timezone")]
     pub timezone: String,
@@ -161,33 +164,41 @@ impl WebsiteConfig {
             return Err(AppError::Config("Website name cannot be empty".to_string()));
         }
 
-        // Validate base URL
-        Url::parse(&self.base_url)
-            .map_err(|e| AppError::Config(format!("Invalid base URL {}: {}", self.base_url, e)))?;
+        // Determine authentication method and validate accordingly
+        let has_share_url = self.share_url.as_ref().filter(|u| !u.is_empty()).is_some();
+        let has_share_id = self.share_id.as_ref().filter(|s| !s.is_empty()).is_some();
+        let has_username_pass = !self.username.is_empty() && !self.password.is_empty();
 
-        // Authentication: either share_id OR (username + password)
-        if let Some(share_id) = &self.share_id {
-            if share_id.is_empty() {
-                return Err(AppError::Config("Share ID cannot be empty".to_string()));
+        if has_share_url {
+            // Share URL mode - extract base_url and share_id from URL
+            // Validate the URL format
+            if let Err(e) = Url::parse(&self.share_url.as_ref().unwrap()) {
+                return Err(AppError::Config(format!("Invalid share URL: {e}")));
             }
-            // When using share_id, username/password are optional and id will be fetched
-        } else {
-            // Not using share_id, require username + password + id
+            // When using share_url, username/password and separate base_url/share_id are ignored
+        } else if has_share_id {
+            // Share ID mode - require base_url
+            if self.base_url.is_empty() {
+                return Err(AppError::Config(
+                    "base_url cannot be empty when using share_id (not share_url)".to_string(),
+                ));
+            }
+        } else if has_username_pass {
+            // Username/password mode - require id and base_url
             if self.id.is_empty() {
                 return Err(AppError::Config(
-                    "Website ID cannot be empty when not using share_id".to_string(),
+                    "Website ID cannot be empty when not using share_url/share_id".to_string(),
                 ));
             }
-            if self.username.is_empty() {
+            if self.base_url.is_empty() {
                 return Err(AppError::Config(
-                    "Username cannot be empty when not using share_id".to_string(),
+                    "base_url cannot be empty when not using share_url".to_string(),
                 ));
             }
-            if self.password.is_empty() {
-                return Err(AppError::Config(
-                    "Password cannot be empty when not using share_id".to_string(),
-                ));
-            }
+        } else {
+            return Err(AppError::Config(
+                "Must provide share_url, or share_id with base_url, or username/password with id and base_url".to_string(),
+            ));
         }
 
         if self.recipients.is_empty() {

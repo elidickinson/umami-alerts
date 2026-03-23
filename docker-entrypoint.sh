@@ -1,6 +1,18 @@
 #!/bin/sh
 set -e
 
+# Function to extract base URL and share ID from share URL
+# Format: https://umami.example.com/share/xxxxx
+# Handles subpaths and trailing slashes correctly
+parse_share_url() {
+    local url="$1"
+    # Strip /share/{id} (with optional trailing slash) to get base URL
+    base_url=$(echo "$url" | sed -E 's|/share/[^/]+/?$||')
+    # Extract share ID (text after /share/, before optional trailing slash)
+    share_id=$(echo "$url" | sed -E 's|^.*/share/([^/]+)/?$|\1|')
+    echo "$base_url|$share_id"
+}
+
 # Function to escape TOML string values
 escape_toml() {
     printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g'
@@ -34,10 +46,11 @@ while true; do
     # Get website variables using printenv (safer than eval)
     NAME=$(printenv "${prefix}NAME" 2>/dev/null || true)
     BASE_URL=$(printenv "${prefix}BASE_URL" 2>/dev/null || true)
+    SHARE_URL=$(printenv "${prefix}SHARE_URL" 2>/dev/null || true)
+    SHARE_ID=$(printenv "${prefix}SHARE_ID" 2>/dev/null || true)
     WEBSITE_ID=$(printenv "${prefix}ID" 2>/dev/null || true)
     USERNAME=$(printenv "${prefix}USERNAME" 2>/dev/null || true)
     PASSWORD=$(printenv "${prefix}PASSWORD" 2>/dev/null || true)
-    SHARE_ID=$(printenv "${prefix}SHARE_ID" 2>/dev/null || true)
     RECIPIENTS=$(printenv "${prefix}RECIPIENTS" 2>/dev/null || true)
     TIMEZONE=$(printenv "${prefix}TIMEZONE" 2>/dev/null || true)
     TIMEZONE="${TIMEZONE:-UTC}"
@@ -55,8 +68,27 @@ while true; do
         continue
     fi
 
+    # Parse share_url if provided
+    if [ -n "$SHARE_URL" ]; then
+        # Extract base_url and share_id from share_url
+        PARSED=$(parse_share_url "$SHARE_URL")
+        EXTRACTED_BASE_URL=$(echo "$PARSED" | cut -d'|' -f1)
+        EXTRACTED_SHARE_ID=$(echo "$PARSED" | cut -d'|' -f2)
+        
+        # Use extracted values if they're valid
+        if [ -n "$EXTRACTED_BASE_URL" ] && [ -n "$EXTRACTED_SHARE_ID" ]; then
+            BASE_URL="$EXTRACTED_BASE_URL"
+            SHARE_ID="$EXTRACTED_SHARE_ID"
+            echo "Website $i (${NAME}): Using share_url - base_url=$BASE_URL, share_id=$SHARE_ID"
+        else
+            echo "WARNING: Website $i (${NAME}) - invalid share_url format, skipping"
+            i=$((i + 1))
+            continue
+        fi
+    fi
+
     # Skip if missing required fields
-    # Two auth modes: SHARE_ID OR (ID + USERNAME + PASSWORD)
+    # Auth priority: SHARE_URL > SHARE_ID > (ID + USERNAME + PASSWORD)
     if [ -z "$BASE_URL" ] || [ -z "$RECIPIENTS" ]; then
         echo "WARNING: Website $i (${NAME}) missing required fields, skipping"
         i=$((i + 1))
@@ -66,12 +98,17 @@ while true; do
     # Validate authentication
     if [ -n "$SHARE_ID" ]; then
         debug="Using share_id authentication"
-    elif [ -z "$WEBSITE_ID" ] || [ -z "$USERNAME" ] || [ -z "$PASSWORD" ]; then
-        echo "WARNING: Website $i (${NAME}) - must provide SHARE_ID or (ID/USERNAME/PASSWORD), skipping"
+    elif [ -n "$USERNAME" ] && [ -n "$PASSWORD" ]; then
+        if [ -z "$WEBSITE_ID" ]; then
+            echo "WARNING: Website $i (${NAME}) - must provide ID with username/password, skipping"
+            i=$((i + 1))
+            continue
+        fi
+        debug="Using username/password authentication"
+    else
+        echo "WARNING: Website $i (${NAME}) - must provide SHARE_URL, SHARE_ID, or (ID/USERNAME/PASSWORD), skipping"
         i=$((i + 1))
         continue
-    else
-        debug="Using username/password authentication"
     fi
 
     # Convert recipients to TOML array format
@@ -83,7 +120,7 @@ while true; do
 name = \"$(escape_toml "$NAME")\"
 base_url = \"$(escape_toml "$BASE_URL")\""
 
-    # Add optional id (required for username/password mode)
+    # Add optional id (for username/password mode)
     if [ -n "$WEBSITE_ID" ]; then
         WEBSITE_CONFIG="${WEBSITE_CONFIG}
 id = \"$(escape_toml "$WEBSITE_ID")\""
@@ -105,6 +142,12 @@ password = \"$(escape_toml "$PASSWORD")\""
     if [ -n "$SHARE_ID" ]; then
         WEBSITE_CONFIG="${WEBSITE_CONFIG}
 share_id = \"$(escape_toml "$SHARE_ID")\""
+    fi
+
+    # Add optional share_url
+    if [ -n "$SHARE_URL" ]; then
+        WEBSITE_CONFIG="${WEBSITE_CONFIG}
+share_url = \"$(escape_toml "$SHARE_URL")\""
     fi
 
     WEBSITE_CONFIG="${WEBSITE_CONFIG}

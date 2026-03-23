@@ -47,17 +47,22 @@ tls = true
 # Disable report generation for the website.
 # Remove this or set to false to enable processing this section.
 disabled = true
-base_url = "https://analytics.example.com"
 
 # Authentication: Select ONE method
 
 # Method 1: Share URL authentication (recommended, no password needed)
-# Get the share ID from your Umami dashboard's Share URL: https://umami.example.com/share/xxxxx
-# share_id = "your-share-id-here"
+# Get the share URL from your Umami dashboard
+# Example: https://analytics.example.com/share/xxxxx
+# share_url = "https://analytics.example.com/share/your-share-id-here"
 
-# Method 2: Username/Password authentication (traditional)
+# Method 2: Share ID with base URL
+# share_id = "your-share-id-here"
+# base_url = "https://analytics.example.com"
+
+# Method 3: Username/Password authentication (traditional)
 # The UUID for the website to generate the report for.
 # Can be found under the website settings.
+base_url = "https://analytics.example.com"
 id = "e97f683e-12e8-4fb5-970b-f5171804fe21"
 # Umami does not have the concept of "API Keys". Instead, these keys
 # are generated on each login. So a username and password with access

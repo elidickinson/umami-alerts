@@ -43,21 +43,31 @@ Configure one or more websites using numbered environment variables:
 **For Website 1:**
 ```
 APP_WEBSITE_1_NAME=My Website
-APP_WEBSITE_1_BASE_URL=https://umami.example.com
-# Authentication - choose ONE method:
-
-# Method 1: Share URL (recommended - no password needed)
-APP_WEBSITE_1_SHARE_ID=your-share-id-from-url
-
-# Method 2: Username/Password (traditional)
-APP_WEBSITE_1_ID=your-website-uuid
-APP_WEBSITE_1_USERNAME=umami-user
-APP_WEBSITE_1_PASSWORD=umami-password
-
-# Recipients and timezone (required for both methods)
+# Share URL authentication (recommended - no password needed)
+# Format: https://umami.example.com/share/xxxxx
+APP_WEBSITE_1_SHARE_URL=https://umami.example.com/share/your-share-id-here
 APP_WEBSITE_1_RECIPIENTS=user1@example.com,user2@example.com
 APP_WEBSITE_1_TIMEZONE=UTC
 APP_WEBSITE_1_DISABLED=false  # Optional, defaults to false
+```
+
+**For Website 2 (add as many as needed):**
+```
+APP_WEBSITE_2_NAME=Blog
+APP_WEBSITE_2_SHARE_URL=https://analytics.yourdomain.com/share/another-share-id
+APP_WEBSITE_2_RECIPIENTS=admin@example.com
+APP_WEBSITE_2_TIMEZONE=America/New_York
+```
+
+**Or use traditional username/password:**
+```
+APP_WEBSITE_3_NAME=Old Site
+APP_WEBSITE_3_BASE_URL=https://umami.oldsite.com
+APP_WEBSITE_3_ID=your-website-uuid
+APP_WEBSITE_3_USERNAME=umami-user
+APP_WEBSITE_3_PASSWORD=umami-password
+APP_WEBSITE_3_RECIPIENTS=admin@example.com
+APP_WEBSITE_3_TIMEZONE=UTC
 ```
 
 **For Website 2 (add as many as needed):**
