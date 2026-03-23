@@ -30,6 +30,9 @@ struct Args {
     /// Path to the configuration file
     #[arg(short, long, default_value = "config.toml")]
     config: PathBuf,
+    /// Enable debug mode
+    #[arg(short, long, default_value = "false")]
+    debug: bool,
 }
 
 #[tokio::main]
