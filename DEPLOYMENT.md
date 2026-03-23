@@ -5,7 +5,7 @@ This guide shows how to deploy umami-alerts to Dokploy using environment variabl
 ## Quick Start
 
 1. Create an Application → **Git Repository**
-2. Configure **Dockerfile** build type
+2. Configure **Dockerfile** build type (not Docker Compose)
 3. Add environment variables (see below)
 4. Deploy
 
@@ -129,6 +129,8 @@ If you prefer managing configuration via a file instead of environment variables
 5. Deploy
 
 > **Note:** When using a file mount, environment variables are NOT used. The mounted file must be a complete, valid config including all `[app]`, `[smtp]`, and `[websites.*]` sections.
+>
+> **Note:** Environment variable approach is recommended. File mount is useful if you need complex TOML features or multiple websites with very different configurations.
 
 ---
 
@@ -201,7 +203,7 @@ When ready to go live, remove `APP_DRY_RUN=true` or set it to `false`.
 - **Never commit** passwords or API keys to your repository
 - **Environment variables** are stored in Dokploy's database - restrict access to Dokploy
 - **Rotate credentials regularly** for best security practice
-- **File-backed secrets** - When using a mounted config file, anyone with `docker exec` access can read credentials. Secure container access accordingly if using this approach.
+- **File mount approach** - If using a mounted config file, passwords will be stored in plain text on the server. Ensure the server access is restricted.
 
 ---
 

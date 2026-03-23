@@ -22,3 +22,6 @@ result-*
 
 # Ignore config.toml
 config.toml
+
+# Ignore sample docker-compose (for reference only)
+docker-compose.sample.yml

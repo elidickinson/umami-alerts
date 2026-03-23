@@ -36,8 +36,18 @@ struct Args {
 async fn main() -> Result<()> {
     let args = Args::parse();
 
+    // Initialize basic logging first so early errors are visible
+    tracing_subscriber::fmt()
+        .with_max_level(Level::INFO)
+        .with_file(true)
+        .with_line_number(true)
+        .with_thread_ids(true)
+        .with_target(false)
+        .init();
+
     // Check if config file exists
     if !args.config.exists() {
+        error!("Config file not found: {}", args.config.display());
         return Err(format!("Config file not found: {}", args.config.display()).into());
     }
     // Load configuration
@@ -46,20 +56,10 @@ async fn main() -> Result<()> {
         .map_err(|e| AppError::api(format!("Config validation failed: {e}")))?;
     let max_concurrent_jobs = config.app.max_concurrent_jobs;
 
-    let log_level = if config.app.debug {
-        Level::DEBUG
-    } else {
-        Level::INFO
-    };
-
-    // Initialize logging
-    tracing_subscriber::fmt()
-        .with_max_level(log_level)
-        .with_file(true)
-        .with_line_number(true)
-        .with_thread_ids(true)
-        .with_target(false)
-        .init();
+    // Update log level based on config
+    if config.app.debug {
+        tracing::info!("Debug mode enabled - all logs will be shown");
+    }
 
     info!("Starting umami-alerts");
     debug!("Debug mode enabled");

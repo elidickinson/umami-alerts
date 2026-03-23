@@ -138,8 +138,8 @@ else
     echo "Using mounted config file at /etc/umami-alerts/config.toml"
 fi
 
-# Setup cron
-echo "${CRON_SCHEDULE} /usr/local/bin/umami-alerts --config /etc/umami-alerts/config.toml" \
+# Setup cron - redirect output to container stdout/stderr so it's visible in logs
+echo "${CRON_SCHEDULE} /usr/local/bin/umami-alerts --config /etc/umami-alerts/config.toml >> /proc/1/fd/1 2>> /proc/1/fd/2" \
     | crontab -
 
 echo "Starting crond with schedule: ${CRON_SCHEDULE}"
