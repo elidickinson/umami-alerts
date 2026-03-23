@@ -107,7 +107,7 @@ docker run -d \
 
 ### Dokploy Deployment
 
-See [DEPLOYMENT.md](DEPLOYMENT.md) for step-by-step instructions on deploying to Dokploy using environment variables for secure credential management.
+See [DEPLOYMENT.md](DEPLOYMENT.md) for step-by-step instructions on deploying to Dokploy using environment variables. All configuration (SMTP, app settings, and websites) can be managed through Dokploy's environment variables without committing secrets to your repository.
 
 ### Crontab Configuration
 

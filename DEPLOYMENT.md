@@ -1,157 +1,183 @@
 # Deployment with Dokploy
 
-This guide shows how to deploy umami-alerts to Dokploy using environment variables for secure credential management.
+This guide shows how to deploy umami-alerts to Dokploy using environment variables for all configuration.
 
-## Option A: Dockerfile Deployment (Recommended)
+## Quick Start
 
-### Setup in Dokploy
-
-1. **Create Application**
-   - Choose **Git Repository** deployment
-   - Select this repository
-   - Use branch: `main`
-
-2. **Configure Build Type**
-   - Choose **Dockerfile**
-   - Dockerfile Path: `Dockerfile`
-   - Docker Context Path: `.`
-
-3. **Add Environment Variables** (in the **Environment** tab)
-
-**Required (use Dokploy Secrets for passwords):**
-```
-SMTP_HOST=mail.smtp2go.com
-SMTP_PORT=2525
-SMTP_USERNAME=your-smtp2go-username
-SMTP_PASSWORD=your-smtp2go-password  ← Use Dokploy Secrets
-SMTP_FROM=your-verified-email@example.com
-```
-
-**Optional (default values shown):**
-```
-CRON_SCHEDULE=0 8 * * *
-SMTP_TLS=true
-SMTP_SKIP_TLS_VERIFY=false  # Maps to skip_verify in TOML config
-APP_DEBUG=false
-APP_DRY_RUN=false
-APP_MAX_CONCURRENT_JOBS=4
-APP_REPORT_TYPE=daily
-```
-
-> **Note:** Required environment variables are validated on container startup. The container will fail to start if any required variable is missing.
-
-4. **Configure Websites**
-
-**Recommended: Mount config file** (for one or multiple sites)
-- Go to **Advanced** → **Volumes**
-- Create a **File Mount** for `/etc/umami-alerts/config.toml`
-- Upload your config file with only `[websites.*]` sections
-- Example format:
-```toml
-[websites.site1]
-base_url = "https://umami.example.com"
-id = "your-website-uuid"
-name = "My Website"
-username = "umami-username"
-password = "umami-password"
-recipients = ["user@example.com"]
-timezone = "UTC"
-
-[websites.site2]
-base_url = "https://analytics.example.com"
-id = "another-website-uuid"
-name = "Blog"
-username = "umami-user"
-password = "your-password"
-recipients = ["admin@example.com", "reports@example.com"]
-timezone = "America/New_York"
-```
-
-**Alternative: Single website via `APP_WEBSITES_CONFIG`**
-- Add to environment variables (works for a single website)
-- Multi-line environment variables can be unreliable in some configs
-- Example:
-```
-APP_WEBSITES_CONFIG=[websites.site1]
-base_url = "https://umami.example.com"
-id = "your-website-uuid"
-name = "My Website"
-username = "umami-username"
-password = "umami-password"
-recipients = ["user@example.com"]
-timezone = "UTC"
-```
-
-5. **Deploy**
-   - Click **Deploy**
-
----
-
-## Option B: Docker Compose Deployment
-
-1. **Create Application** → **Docker Compose**
-2. Select `docker-compose.dokploy.yml`
-3. Add environment variables as shown above
+1. Create an Application → **Git Repository**
+2. Configure **Dockerfile** build type
+3. Add environment variables (see below)
 4. Deploy
 
----
-
-## SMTP Configuration
-
-### SMTP2Go (Example)
-
-For SMTP2Go specifically:
-- **Host**: `mail.smtp2go.com` or `smtpcorp.com`
-- **Port**: Try `2525` (recommended) or `587` (with TLS)
-- **Username**: Your SMTP2Go API username
-- **Password**: Your SMTP2Go password
-- **From**: Must be a verified email address in your SMTP2Go account
-
-### Generic SMTP
-
-Replace the example values with your SMTP provider's settings:
-- Host and port from your SMTP provider
-- Username and password from your SMTP account
-- From address should match your account's verified email
-
----
-
-## Environment Variable Reference
+## Environment Variables
 
 ### Required
 
-| Variable | Description |
-|----------|-------------|
-| `SMTP_HOST` | SMTP server hostname |
-| `SMTP_PORT` | SMTP server port (numeric) |
-| `SMTP_USERNAME` | SMTP authentication username |
-| `SMTP_PASSWORD` | SMTP authentication password |
-| `SMTP_FROM` | From email address for reports |
+| Variable | Example | Description |
+|----------|---------|-------------|
+| `SMTP_HOST` | `mail.smtp2go.com` | SMTP server hostname |
+| `SMTP_PORT` | `2525` | SMTP server port (numeric) |
+| `SMTP_USERNAME` | `your-username` | SMTP authentication username |
+| `SMTP_PASSWORD` | `your-password` | SMTP authentication password |
+| `SMTP_FROM` | `reports@example.com` | From email address for reports |
 
-### Optional
+### Optional (App Settings)
 
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `CRON_SCHEDULE` | `0 8 * * *` | Cron schedule for report generation |
-| `SMTP_TLS` | `true` | Enable TLS for SMTP连接 |
-| `SMTP_SKIP_TLS_VERIFY` | `false` | Skip TLS certificate verification (maps to `skip_verify` in TOML) |
+| `SMTP_TLS` | `true` | Enable TLS for SMTP connections |
+| `SMTP_SKIP_TLS_VERIFY` | `false` | Skip TLS certificate verification |
 | `APP_DEBUG` | `false` | Enable debug logging |
 | `APP_DRY_RUN` | `false` | Generate reports without sending (for testing) |
 | `APP_MAX_CONCURRENT_JOBS` | `4` | Maximum concurrent website checks |
 | `APP_REPORT_TYPE` | `daily` | Report type: `daily` or `weekly` |
-| `APP_WEBSITES_CONFIG` | (empty) | Single website config as TOML (use file mount for multiple) |
+
+### Website Configuration
+
+Configure one or more websites using numbered environment variables:
+
+**For Website 1:**
+```
+APP_WEBSITE_1_NAME=My Website
+APP_WEBSITE_1_BASE_URL=https://umami.example.com
+APP_WEBSITE_1_ID=your-website-uuid
+APP_WEBSITE_1_USERNAME=umami-user
+APP_WEBSITE_1_PASSWORD=umami-password
+APP_WEBSITE_1_RECIPIENTS=user1@example.com,user2@example.com
+APP_WEBSITE_1_TIMEZONE=UTC
+APP_WEBSITE_1_DISABLED=false  # Optional, defaults to false
+```
+
+**For Website 2 (add as many as needed):**
+```
+APP_WEBSITE_2_NAME=Blog
+APP_WEBSITE_2_BASE_URL=https://analytics.yourdomain.com
+APP_WEBSITE_2_ID=another-website-uuid
+APP_WEBSITE_2_USERNAME=admin
+APP_WEBSITE_2_PASSWORD=secure-password
+APP_WEBSITE_2_RECIPIENTS=admin@example.com
+APP_WEBSITE_2_TIMEZONE=America/New_York
+```
+
+> **Note:** Numbers must be sequential starting from 1. Missing numbers will stop detection. Use `APP_WEBSITE_X_DISABLED=true` to skip a website without breaking the sequence.
 
 ---
 
-## Testing Deployment
+## Dokploy Setup Steps
 
-To test without sending real emails:
+### 1. Create Application
+- In Dokploy, click **Create Application**
+- Choose **Git Repository**
+- Select your `umami-alerts` repository
+- Use branch: `main`
+
+### 2. Configure Build
+- **Build Type**: Dockerfile
+- **Dockerfile Path**: `Dockerfile`
+- **Docker Context Path**: `.`
+
+### 3. Add Environment Variables
+Navigate to the **Environment** tab and add your variables:
+
+**SMTP Configuration (required):**
+```
+SMTP_HOST=mail.smtp2go.com
+SMTP_PORT=2525
+SMTP_USERNAME=your-smtp2go-username
+SMTP_PASSWORD=your-smtp2go-password
+SMTP_FROM=your-verified-email@example.com
+```
+
+**App Settings (optional):**
+```
+CRON_SCHEDULE=0 8 * * *
+APP_REPORT_TYPE=weekly
+APP_DEBUG=false
+```
+
+**Websites (required - at least one):**
+```
+APP_WEBSITE_1_NAME=My Site
+APP_WEBSITE_1_BASE_URL=https://umami.mysite.com
+APP_WEBSITE_1_ID=550e8400-e29b-41d4-a716-446655440000
+APP_WEBSITE_1_USERNAME=umami-user
+APP_WEBSITE_1_PASSWORD=my-umami-password
+APP_WEBSITE_1_RECIPIENTS=me@example.com
+APP_WEBSITE_1_TIMEZONE=UTC
+```
+
+### 4. Deploy
+Click the **Deploy** button
+
+### 5. Verify
+Check the logs in Dokploy to confirm:
+- "Generating config.toml from environment variables..."
+- "Config generated successfully"
+- "Starting crond with schedule: 0 8 * * *"
+
+---
+
+## Alternative: Mount Config File
+
+If you prefer managing configuration via a file instead of environment variables:
+
+1. Create a `config.toml` file with all settings (see `config.sample.toml`)
+2. Go to **Advanced** → **Volumes**
+3. Create a **File Mount** at `/etc/umami-alerts/config.toml`
+4. Upload your config file
+5. Deploy
+
+> **Note:** When using a file mount, environment variables are NOT used. The mounted file must be a complete, valid config including all `[app]`, `[smtp]`, and `[websites.*]` sections.
+
+---
+
+## SMTP Configuration Examples
+
+### SMTP2Go
+```
+SMTP_HOST=mail.smtp2go.com
+SMTP_PORT=2525
+SMTP_USERNAME=your-api-username
+SMTP_PASSWORD=your-api-password
+SMTP_FROM=your-verified-email@example.com
+```
+
+### SendGrid
+```
+SMTP_HOST=smtp.sendgrid.net
+SMTP_PORT=587
+SMTP_USERNAME=apikey
+SMTP_PASSWORD=SG.your-sendgrid-api-key
+SMTP_FROM=your-sender@example.com
+```
+
+### Gmail (with App Password)
+```
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USERNAME=your-email@gmail.com
+SMTP_PASSWORD=your-app-specific-password
+SMTP_FROM=your-email@gmail.com
+```
+
+---
+
+## Testing
+
+To test without sending actual emails:
 
 1. Set `APP_DRY_RUN=true` in environment variables
 2. Redeploy
 3. Check logs to see report generation (no email sent)
 
-When ready to go live, remove or set `APP_DRY_RUN=false`.
+Example:
+```
+APP_DRY_RUN=true
+CRON_SCHEDULE="* * * * *"  # Run every minute for testing
+```
+
+When ready to go live, remove `APP_DRY_RUN=true` or set it to `false`.
 
 ---
 
@@ -159,19 +185,32 @@ When ready to go live, remove or set `APP_DRY_RUN=false`.
 
 | Issue | Solution |
 |-------|----------|
-| **Container fails to start** | Check logs for missing required environment variables (`SMTP_HOST`, `SMTP_PORT`, etc.) |
+| **Container fails to start** | Check logs for "Missing required environment variables" |
+| **Missing SMTP vars** | Ensure `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_FROM` are all set |
+| **Website not detected** | Ensure website numbering is sequential (1, 2, 3...) without gaps |
+| **Recipients list broken** | Use comma-separated values without spaces: `user1@example.com,user2@example.com` |
+| **Timezone error** | Verify timezone is valid (e.g., `UTC`, `America/New_York`, `Asia/Kolkata`) |
 | **SMTP connection issues** | Try different ports (2525, 8025, 587, 25) |
 | **TLS errors** | Set `SMTP_SKIP_TLS_VERIFY=true` |
-| **Cron not running** | Check `CRON_SCHEDULE` format (Cron syntax) |
-| **Config not loading** | Check Docker logs for config generation errors |
-| **Websites ignored when using file mount** | Ensure file mount path is `/etc/umami-alerts/config.toml` and contains only `[websites.*]` sections |
+| **Cron not running** | Check `CRON_SCHEDULE` format uses standard cron syntax |
 
 ---
 
 ## Security Notes
 
-- **Never commit `config.toml` to your repository** - it contains sensitive credentials
-- **Use Dokploy's Secrets feature for passwords** - Secrets are stored encrypted at rest and injected as environment variables at runtime
-- **Store `SMTP_PASSWORD` and website passwords as Dokploy secrets**, not plain environment variables
-- **Rotate credentials regularly** - For best security practice
-- **Config files in containers** - The generated `/etc/umami-alerts/config.toml` inside the container contains plaintext passwords. Anyone with `docker exec` access can read these credentials. This is inherent to the app's design, so secure container access accordingly
+- **Never commit** passwords or API keys to your repository
+- **Environment variables** are stored in Dokploy's database - restrict access to Dokploy
+- **Rotate credentials regularly** for best security practice
+- **File-backed secrets** - When using a mounted config file, anyone with `docker exec` access can read credentials. Secure container access accordingly if using this approach.
+
+---
+
+## Getting Website UUID
+
+Find your Umami website UUID:
+1. Log into your Umami instance
+2. Go to **Settings** → **Websites**
+3. Click on your website
+4. The UUID is shown in the **Website ID** field
+
+Example: `e97f683e-12e8-4fb5-970b-f5171804fe21`

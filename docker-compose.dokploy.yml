@@ -3,21 +3,42 @@ services:
     build: .
     restart: unless-stopped
     environment:
+      # Cron schedule (optional, default: daily at 8 AM UTC)
       - CRON_SCHEDULE=${CRON_SCHEDULE:-0 8 * * *}
+
       # SMTP Configuration (required)
       - SMTP_HOST=${SMTP_HOST}
       - SMTP_PORT=${SMTP_PORT}
       - SMTP_USERNAME=${SMTP_USERNAME}
       - SMTP_PASSWORD=${SMTP_PASSWORD}
       - SMTP_FROM=${SMTP_FROM}
+
       # SMTP TLS (optional, defaults shown)
       - SMTP_TLS=${SMTP_TLS:-true}
       - SMTP_SKIP_TLS_VERIFY=${SMTP_SKIP_TLS_VERIFY:-false}  # Maps to skip_verify in TOML
+
       # App Settings (optional, defaults shown)
       - APP_DEBUG=${APP_DEBUG:-false}
       - APP_DRY_RUN=${APP_DRY_RUN:-false}
       - APP_MAX_CONCURRENT_JOBS=${APP_MAX_CONCURRENT_JOBS:-4}
       - APP_REPORT_TYPE=${APP_REPORT_TYPE:-daily}
-      # Website configurations
-      # NOTE: For multi-site configurations, use file mount instead. See DEPLOYMENT.md.
-      - APP_WEBSITES_CONFIG=${APP_WEBSITES_CONFIG:-}
+
+      # Website 1 Configuration (at least one required)
+      - APP_WEBSITE_1_NAME=${APP_WEBSITE_1_NAME}
+      - APP_WEBSITE_1_BASE_URL=${APP_WEBSITE_1_BASE_URL}
+      - APP_WEBSITE_1_ID=${APP_WEBSITE_1_ID}
+      - APP_WEBSITE_1_USERNAME=${APP_WEBSITE_1_USERNAME}
+      - APP_WEBSITE_1_PASSWORD=${APP_WEBSITE_1_PASSWORD}
+      - APP_WEBSITE_1_RECIPIENTS=${APP_WEBSITE_1_RECIPIENTS}
+      - APP_WEBSITE_1_TIMEZONE=${APP_WEBSITE_1_TIMEZONE:-UTC}
+      - APP_WEBSITE_1_DISABLED=${APP_WEBSITE_1_DISABLED:-false}
+
+      # Website 2 Configuration (optional - add more as needed)
+      # - APP_WEBSITE_2_NAME=${APP_WEBSITE_2_NAME}
+      # - APP_WEBSITE_2_BASE_URL=${APP_WEBSITE_2_BASE_URL}
+      # - APP_WEBSITE_2_ID=${APP_WEBSITE_2_ID}
+      # - APP_WEBSITE_2_USERNAME=${APP_WEBSITE_2_USERNAME}
+      # - APP_WEBSITE_2_PASSWORD=${APP_WEBSITE_2_PASSWORD}
+      # - APP_WEBSITE_2_RECIPIENTS=${APP_WEBSITE_2_RECIPIENTS}
+      # - APP_WEBSITE_2_TIMEZONE=${APP_WEBSITE_2_TIMEZONE:-UTC}
+      # - APP_WEBSITE_2_DISABLED=${APP_WEBSITE_2_DISABLED:-false}
