@@ -11,7 +11,6 @@ mod error;
 mod report;
 
 use crate::{
-    api::UmamiClient,
     config::{validation::validate_config, Config, WebsiteConfig},
     error::{AppError, Result},
     report::generator::ReportGenerator,
@@ -191,6 +190,16 @@ async fn process_website(state: &AppState, site_name: &str, website: &WebsiteCon
     };
 
     // Generate and send report
+    // Determine auth mode
+    use crate::api::client::AuthMode;
+    let auth_mode = if website.share_url.as_ref().filter(|s| !s.is_empty()).is_some()
+        || website.share_id.as_ref().filter(|s| !s.is_empty()).is_some()
+    {
+        AuthMode::Share
+    } else {
+        AuthMode::Bearer
+    };
+    
     state
         .report_generator
         .generate_and_send(
@@ -201,6 +210,7 @@ async fn process_website(state: &AppState, site_name: &str, website: &WebsiteCon
             &state.config.app.report_type,
             &state.config.smtp,
             &token,
+            auth_mode,
         )
         .await?;
 

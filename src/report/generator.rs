@@ -13,7 +13,7 @@ use tracing::{debug, error, info};
 
 use super::{helpers, models::ReportData};
 use crate::{
-    api::client::UmamiClient,
+    api::client::{AuthMode, UmamiClient},
     api::models::MetricValue,
     config::models::{ReportType, SmtpConfig, WebsiteConfig},
     error::{AppError, Result},
@@ -44,12 +44,13 @@ impl ReportGenerator {
         report_type: &ReportType,
         smtp_config: &SmtpConfig,
         token: &str,
+        auth_mode: AuthMode,
     ) -> Result<()> {
         info!("Generating report for website: {}", website.name);
 
         let time_range = self.calculate_time_range(&website.timezone, report_type)?;
         let report_data = self
-            .fetch_report_data(client, website, website_id, token, time_range, report_type)
+            .fetch_report_data(client, website, website_id, token, time_range, report_type, auth_mode)
             .await?;
         let html = self.render_report(&report_data)?;
 
@@ -138,17 +139,18 @@ impl ReportGenerator {
         token: &str,
         time_range: TimeRange,
         report_type: &ReportType,
+        auth_mode: AuthMode,
     ) -> Result<ReportData> {
         debug!(
-            "Fetching metrics for time range: {} to {}",
-            time_range.start, time_range.end
+            "Fetching metrics for time range: {} to {} (auth: {:?})",
+            time_range.start, time_range.end, auth_mode
         );
 
         let start_at = time_range.start.timestamp_millis();
         let end_at = time_range.end.timestamp_millis();
 
         let stats = client
-            .get_stats(token, website_id, start_at, end_at)
+            .get_stats(token, website_id, start_at, end_at, auth_mode)
             .await?;
 
         let bounce_rate = MetricValue {
@@ -167,23 +169,23 @@ impl ReportGenerator {
         let time_spent = helpers::format_time_spent(stats.total_time.value, stats.visits.value);
 
         let pages = client
-            .get_metrics(token, website_id, "url", start_at, end_at, 10)
+            .get_metrics(token, website_id, "url", start_at, end_at, 10, auth_mode)
             .await?;
 
         let countries = client
-            .get_metrics(token, website_id, "country", start_at, end_at, 10)
+            .get_metrics(token, website_id, "country", start_at, end_at, 10, auth_mode)
             .await?;
 
         let browsers = client
-            .get_metrics(token, website_id, "browser", start_at, end_at, 5)
+            .get_metrics(token, website_id, "browser", start_at, end_at, 5, auth_mode)
             .await?;
 
         let devices = client
-            .get_metrics(token, website_id, "device", start_at, end_at, 5)
+            .get_metrics(token, website_id, "device", start_at, end_at, 5, auth_mode)
             .await?;
 
         let referrers = client
-            .get_metrics(token, website_id, "referrer", start_at, end_at, 5)
+            .get_metrics(token, website_id, "referrer", start_at, end_at, 5, auth_mode)
             .await?;
 
         Ok(ReportData {

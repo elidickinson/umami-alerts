@@ -7,6 +7,12 @@ use crate::error::{AppError, Result};
 
 const API_TIMEOUT: Duration = Duration::from_secs(30);
 
+#[derive(Debug, Clone, Copy)]
+pub enum AuthMode {
+    Share,     // Uses x-umami-share-token header (for share URL auth)
+    Bearer,    // Uses Authorization: Bearer header (for username/password auth)
+}
+
 #[derive(Debug, Clone)]
 pub struct UmamiClient {
     client: Client,
@@ -24,6 +30,14 @@ impl UmamiClient {
         let base_url = base_url.trim_end_matches('/').to_string();
 
         Ok(Self { client, base_url })
+    }
+
+    /// Apply authentication to a request builder based on auth mode
+    fn apply_auth(&self, builder: reqwest::RequestBuilder, token: &str, mode: AuthMode) -> reqwest::RequestBuilder {
+        match mode {
+            AuthMode::Share => builder.header("x-umami-share-token", token),
+            AuthMode::Bearer => builder.bearer_auth(token),
+        }
     }
 
     #[instrument(skip(self, password))]
@@ -82,10 +96,11 @@ impl UmamiClient {
         website_id: &str,
         start_at: i64,
         end_at: i64,
+        auth_mode: AuthMode,
     ) -> Result<Stats> {
         debug!("Fetching stats for website {}", website_id);
 
-        let response = self
+        let request = self
             .client
             .get(format!(
                 "{}/api/websites/{}/stats",
@@ -94,8 +109,11 @@ impl UmamiClient {
             .query(&[
                 ("startAt", start_at.to_string()),
                 ("endAt", end_at.to_string()),
-            ])
-            .bearer_auth(token)
+            ]);
+
+        let request = self.apply_auth(request, token, auth_mode);
+
+        let response = request
             .send()
             .await
             .map_err(|e| AppError::api(format!("Failed to fetch stats: {e}")))?;
@@ -112,13 +130,14 @@ impl UmamiClient {
         start_at: i64,
         end_at: i64,
         limit: u32,
+        auth_mode: AuthMode,
     ) -> Result<Vec<Metric>> {
         debug!(
             "Fetching {} metrics for website {} (limit: {})",
             metric_type, website_id, limit
         );
 
-        let response = self
+        let request = self
             .client
             .get(format!(
                 "{}/api/websites/{}/metrics",
@@ -129,8 +148,11 @@ impl UmamiClient {
                 ("startAt", start_at.to_string()),
                 ("endAt", end_at.to_string()),
                 ("limit", limit.to_string()),
-            ])
-            .bearer_auth(token)
+            ]);
+
+        let request = self.apply_auth(request, token, auth_mode);
+
+        let response = request
             .send()
             .await
             .map_err(|e| AppError::api(format!("Failed to fetch metrics: {e}")))?;
@@ -246,7 +268,7 @@ mod tests {
             .create_async()
             .await;
 
-        let result = client.get_stats("token", "test-id", 0, 1000).await;
+        let result = client.get_stats("token", "test-id", 0, 1000, AuthMode::Share).await;
         assert!(result.is_ok());
     }
 }
