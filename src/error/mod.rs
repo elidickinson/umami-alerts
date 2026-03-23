@@ -132,43 +132,7 @@ impl From<String> for AppError {
     }
 }
 
-// Helper methods for error classification
 impl AppError {
-    #[cfg_attr(not(test), allow(dead_code))]
-    pub fn is_network_error(&self) -> bool {
-        match self {
-            Self::Request(e) => e.is_connect() || e.is_timeout(),
-            Self::Api(msg) => msg.contains("network"),
-            Self::Smtp(msg) => msg.contains("connection"),
-            _ => false,
-        }
-    }
-
-    #[cfg_attr(not(test), allow(dead_code))]
-    pub fn is_auth_error(&self) -> bool {
-        match self {
-            Self::Api(msg) => msg.contains("unauthorized") || msg.contains("forbidden"),
-            Self::Smtp(msg) => msg.contains("authentication"),
-            _ => false,
-        }
-    }
-
-    #[cfg_attr(not(test), allow(dead_code))]
-    pub fn is_retryable(&self) -> bool {
-        self.is_network_error()
-            || match self {
-                Self::Api(msg) => msg.contains("rate limit") || msg.contains("timeout"),
-                Self::Smtp(msg) => msg.contains("try again"),
-                _ => false,
-            }
-    }
-
-    // Helper constructors
-    #[cfg_attr(not(test), allow(dead_code))]
-    pub fn config<T: ToString>(msg: T) -> Self {
-        Self::Config(msg.to_string())
-    }
-
     pub fn api<T: ToString>(msg: T) -> Self {
         Self::Api(msg.to_string())
     }
@@ -196,22 +160,8 @@ mod tests {
     }
 
     #[test]
-    fn test_error_classification() {
-        let network_err = AppError::Api("network timeout".to_string());
-        assert!(network_err.is_network_error());
-        assert!(!network_err.is_auth_error());
-
-        let auth_err = AppError::Api("unauthorized access".to_string());
-        assert!(!auth_err.is_network_error());
-        assert!(auth_err.is_auth_error());
-
-        let retry_err = AppError::Api("rate limit exceeded".to_string());
-        assert!(retry_err.is_retryable());
-    }
-
-    #[test]
     fn test_error_display() {
-        let err = AppError::config("invalid config");
+        let err = AppError::Config("invalid config".to_string());
         assert_eq!(err.to_string(), "Configuration error: invalid config");
 
         let err = AppError::api("API timeout");

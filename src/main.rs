@@ -5,6 +5,9 @@ use std::sync::Arc;
 use tokio::sync::Semaphore;
 use tracing::{debug, error, info};
 
+// Load .env file if it exists
+let _ = dotenvy::dotenv();
+
 mod api;
 mod config;
 mod error;
@@ -203,11 +206,11 @@ async fn process_website(state: &AppState, site_name: &str, website: &WebsiteCon
             .unwrap_or_default();
 
         let share_idx = path_segments.iter().position(|&s| s == "share")
-            .ok_or_else(|| AppError::Config(format!("share URL missing /share/ path: {share_url}")))?;
+            .ok_or_else(|| AppError::Config("share URL missing /share/ path".to_string()))?;
 
         let share_id = path_segments.get(share_idx + 1)
             .filter(|s| !s.is_empty())
-            .ok_or_else(|| AppError::Config(format!("share URL missing share ID: {share_url}")))?;
+            .ok_or_else(|| AppError::Config("share URL missing share ID after /share/".to_string()))?;
 
         // Reconstruct base URL without /share/xxxxx
         let path_prefix = if share_idx > 0 {
@@ -222,7 +225,7 @@ async fn process_website(state: &AppState, site_name: &str, website: &WebsiteCon
             path_prefix
         );
 
-        info!("  Extracted: base_url={}, share_id={}", base_url, share_id);
+        info!("  Extracted: base_url={}", base_url);
 
         let client = crate::api::UmamiClient::new(base_url)?;
         let share = client.authenticate_with_share(share_id).await?;

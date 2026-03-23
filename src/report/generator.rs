@@ -98,7 +98,11 @@ impl ReportGenerator {
                     0,
                     0,
                 )
-                .unwrap()
+                .earliest()
+                .ok_or_else(|| AppError::Config(format!(
+                    "Cannot represent midnight in timezone {timezone} for {}",
+                    yesterday.format("%Y-%m-%d")
+                )))?
                 .with_timezone(&Utc);
 
             end = start + chrono::Duration::days(1) - chrono::Duration::seconds(1);
@@ -120,7 +124,11 @@ impl ReportGenerator {
                     59,
                     59,
                 )
-                .unwrap()
+                .latest()
+                .ok_or_else(|| AppError::Config(format!(
+                    "Cannot represent 23:59:59 in timezone {timezone} for {}",
+                    yesterday.format("%Y-%m-%d")
+                )))?
                 .with_timezone(&Utc);
 
             // Start time is 7 days before end time (previous Sunday 00:00:00)

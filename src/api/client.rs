@@ -75,7 +75,7 @@ impl UmamiClient {
         }
     }
 
-    #[instrument(skip(self))]
+    #[instrument(skip(self, share_id))]
     pub async fn authenticate_with_share(&self, share_id: &str) -> Result<ShareResponse> {
         debug!("Authenticating with Umami Share API");
 
