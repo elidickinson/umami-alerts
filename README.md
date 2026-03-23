@@ -84,6 +84,31 @@ $ umami-alerts
 # Specify config path
 $ umami-alerts --config /path/to/config.toml
 ```
+
+### Docker Deployment
+
+The project includes Docker support with automatic cron scheduling:
+
+```bash
+# Build and run with docker-compose
+docker-compose up -d
+
+# Or run directly with docker
+docker run -d \
+  -e SMTP_HOST=mail.smtp2go.com \
+  -e SMTP_PORT=2525 \
+  -e SMTP_USERNAME=your-username \
+  -e SMTP_PASSWORD=your-password \
+  -e SMTP_FROM=reports@example.com \
+  -e CRON_SCHEDULE="0 8 * * *" \
+  -v ./config.toml:/etc/umami-alerts/config.toml:ro \
+  umami-alerts
+```
+
+### Dokploy Deployment
+
+See [DEPLOYMENT.md](DEPLOYMENT.md) for step-by-step instructions on deploying to Dokploy using environment variables for secure credential management.
+
 ### Crontab Configuration
 
 `umami-alerts` is meant to be run as an everyday-cron to send daily reports.

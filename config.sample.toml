@@ -1,3 +1,15 @@
+# ============================================================================
+# DEPLOYMENT NOTE:
+#
+# When deploying to Dokploy, you can use environment variables instead of
+# this config file. See DEPLOYMENT.md for details.
+#
+# Environment variables supported:
+#   - APP_DEBUG, APP_DRY_RUN, APP_MAX_CONCURRENT_JOBS, APP_REPORT_TYPE
+#   - SMTP_HOST, SMTP_PORT, SMTP_USERNAME, SMTP_PASSWORD, SMTP_FROM,
+#     SMTP_TLS, SMTP_SKIP_TLS_VERIFY
+# ============================================================================
+
 [app]
 # Enable debug logging.
 debug = false
@@ -8,6 +20,13 @@ dry_run = false
 max_concurrent_jobs = 4
 # The duration for which the report is generated. Can be daily or weekly.
 report_type = "weekly"
+
+# ============================================================================
+# SMTP CONFIGURATION
+# For Dokploy deployment, set these via environment variables instead:
+#   SMTP_HOST, SMTP_PORT, SMTP_USERNAME, SMTP_PASSWORD, SMTP_FROM,
+#   SMTP_SKIP_TLS_VERIFY (maps to skip_verify), SMTP_TLS
+# ============================================================================
 
 [smtp]
 # SMTP Host and Port
@@ -20,7 +39,7 @@ password = "your-password"
 # name here: Umami Reports <reports@example.com>
 from = "reports@example.com"
 # Enable this to skip checks for self-signed certificates
-skip_tls_verify = false
+skip_verify = false
 # STARTTLS for SMTP.
 tls = true
 

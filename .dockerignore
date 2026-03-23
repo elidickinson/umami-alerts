@@ -1,0 +1,13 @@
+target/
+debug/
+result
+result-*
+config.toml
+.git/
+.github/
+.gitignore
+*.md
+*.nix
+*.lock
+!Cargo.lock
+deny.toml
