@@ -4,6 +4,7 @@ use tracing::debug;
 
 pub mod models;
 pub mod validation;
+pub mod env;
 
 pub use models::{Config, WebsiteConfig};
 

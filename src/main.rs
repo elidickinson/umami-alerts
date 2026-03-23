@@ -83,13 +83,29 @@ async fn main() {
 }
 
 async fn run_app(args: Args) -> Result<()> {
-    // Check if config file exists
-    if !args.config.exists() {
+    // Load configuration - try config file first, then environment variables
+    let config = if args.config.exists() {
+        info!("Loading configuration from: {}", args.config.display());
+        Config::load(&args.config).await?
+    } else if let Some(env_config) = config::env::load_from_env() {
+        env_config
+    } else {
         error!("Config file not found: {}", args.config.display());
+        error!("");
+        error!("To get started, use one of these options:");
+        error!("  1. Copy the sample config: cp config.sample.toml config.toml");
+        error!("  2. Create a .env file: cp .env.example .env");
+        error!("     Then set your environment variables in .env");
+        error!("");
+        error!("Required environment variables:");
+        error!("  - SMTP_HOST, SMTP_PORT, SMTP_USERNAME, SMTP_PASSWORD, SMTP_FROM");
+        error!("  - APP_WEBSITE_1_NAME, APP_WEBSITE_1_RECIPIENTS");
+        error!("     (plus either APP_WEBSITE_1_SHARE_URL or APP_WEBSITE_1_BASE_URL + credentials)");
+        error!("");
+        error!("See .env.example for all available options.");
         return Err(format!("Config file not found: {}", args.config.display()).into());
-    }
-    // Load configuration
-    let config = Config::load(&args.config).await?;
+    };
+
     validate_config(&config)
         .map_err(|e| AppError::api(format!("Config validation failed: {e}")))?;
     let max_concurrent_jobs = config.app.max_concurrent_jobs;
