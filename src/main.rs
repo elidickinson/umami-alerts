@@ -33,18 +33,61 @@ struct Args {
 }
 
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() {
     let args = Args::parse();
 
-    // Initialize basic logging first so early errors are visible
+    // Initialize logging with full error details
+    let env_filter = tracing_subscriber::EnvFilter::builder()
+        .with_default_directive(
+            if args.debug {
+                tracing::Level::DEBUG
+            } else {
+                tracing::Level::INFO
+            }
+            .into(),
+        )
+        .from_env_lossy();
+
     tracing_subscriber::fmt()
-        .with_max_level(Level::INFO)
+        .with_env_filter(env_filter)
+        .with_max_level(if args.debug {
+            Level::DEBUG
+        } else {
+            Level::INFO
+        })
         .with_file(true)
         .with_line_number(true)
         .with_thread_ids(true)
         .with_target(false)
+        .with_span_list(false)
+        .pretty()
+        .with_thread_names(true)
+        .with_level(true)
         .init();
 
+    // Run the application and log any errors
+    if let Err(e) = run_app(args).await {
+        // Log the full error hierarchy
+        error!("Application error: {}", e);
+        if let Some(source) = std::error::Error::source(&e) {
+            error!("Caused by: {}", source);
+            let mut src = source.source();
+            while let Some(next_src) = src {
+                error!("  caused by: {}", next_src);
+                src = next_src.source();
+            }
+        }
+        
+        // Show backtrace if available
+        if std::env::var("RUST_BACKTRACE").is_ok() {
+            error!("{:?}", e);
+        }
+        
+        std::process::exit(1);
+    }
+}
+
+async fn run_app(args: Args) -> Result<()> {
     // Check if config file exists
     if !args.config.exists() {
         error!("Config file not found: {}", args.config.display());
@@ -97,7 +140,10 @@ async fn main() -> Result<()> {
                 let _permit = state.semaphore.acquire().await.unwrap();
                 match process_website(&state, name, website).await {
                     Ok(_) => Ok(name.to_string()),
-                    Err(e) => Err((name.to_string(), e)),
+                    Err(e) => {
+                        let _ = tracing::error!("Website {} failed: {} (chain: {:?})", name, e, e);
+                        Err((name.to_string(), e))
+                    }
                 }
             }
         })
@@ -120,6 +166,21 @@ async fn main() -> Result<()> {
             .map(|r| r.as_ref().unwrap_err().0.clone())
             .collect();
         error!("Failed websites: {}", failed_sites.join(", "));
+        
+        // Log full error details for each failure
+        for (site, err) in &failures {
+            let err = err.as_ref().unwrap_err();
+            error!("[{}]: Error: {}", site, err);
+            if let Some(source) = std::error::Error::source(err) {
+                error!("[{}]: Caused by: {}", site, source);
+                let mut src = source.source();
+                while let Some(next_src) = src {
+                    error!("[{}]:   caused by: {}", site, next_src);
+                    src = next_src.source();
+                }
+            }
+        }
+        
         return Err(AppError::task(format!(
             "Failed to process {} websites",
             failures.len()
@@ -128,64 +189,6 @@ async fn main() -> Result<()> {
 
     Ok(())
 }
-
-async fn process_website(state: &AppState, site_name: &str, website: &WebsiteConfig) -> Result<()> {
-    info!("Processing website: {}", site_name);
-
-    // Resolve effective auth parameters
-    let effective_share_url = website.share_url.as_deref().filter(|s| !s.is_empty());
-    let effective_share_id = website.share_id.as_deref().filter(|s| !s.is_empty());
-
-    // Authenticate and get website_id
-    let (client, token, website_id) = if let Some(share_url) = effective_share_url {
-        info!("Using share URL for authentication");
-        
-        // Parse share URL to extract base_url and share_id
-        // Format: https://umami.example.com/share/xxxxx or https://example.com/umami/share/xxxxx
-        let parsed = url::Url::parse(share_url)
-            .map_err(|e| AppError::Config(format!("Invalid share URL: {e}")))?;
-        
-        // Get path segments and find the share ID
-        let path_segments: Vec<&str> = parsed.path_segments()
-            .map(|s| s.collect())
-            .unwrap_or_default();
-        
-        let share_idx = path_segments.iter().position(|&s| s == "share")
-            .ok_or_else(|| AppError::Config(format!("share URL missing /share/ path: {share_url}")))?;
-        
-        let share_id = path_segments.get(share_idx + 1)
-            .filter(|s| !s.is_empty())
-            .ok_or_else(|| AppError::Config(format!("share URL missing share ID: {share_url}")))?;
-        
-        // Reconstruct base URL without /share/xxxxx
-        // Add leading "/" if there are path segments before /share/
-        let path_prefix = if share_idx > 0 {
-            format!("/{}", path_segments[..share_idx].join("/"))
-        } else {
-            String::new()
-        };
-        let base_url = format!(
-            "{}://{}{}",
-            parsed.scheme(),
-            parsed.authority(),
-            path_prefix
-        );
-        
-        info!("  Extracted: base_url={}, share_id={}", base_url, share_id);
-        
-        let client = crate::api::UmamiClient::new(base_url)?;
-        let share = client.authenticate_with_share(share_id).await?;
-        (client, share.token, share.website_id)
-    } else if let Some(share_id) = effective_share_id {
-        info!("Using Share ID for authentication");
-        let client = crate::api::UmamiClient::new(website.base_url.clone())?;
-        let share = client.authenticate_with_share(share_id).await?;
-        (client, share.token, share.website_id)
-    } else {
-        info!("Using username/password for authentication");
-        let client = crate::api::UmamiClient::new(website.base_url.clone())?;
-        let token = client
-            .authenticate(&website.username, &website.password)
             .await?;
         (client, token, website.id.clone())
     };
