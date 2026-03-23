@@ -11,6 +11,7 @@ mod error;
 mod report;
 
 use crate::{
+    api::client::AuthMode,
     config::{validation::validate_config, Config, WebsiteConfig},
     error::{AppError, Result},
     report::generator::ReportGenerator,
@@ -191,10 +192,7 @@ async fn process_website(state: &AppState, site_name: &str, website: &WebsiteCon
 
     // Generate and send report
     // Determine auth mode
-    use crate::api::client::AuthMode;
-    let auth_mode = if website.share_url.as_ref().filter(|s| !s.is_empty()).is_some()
-        || website.share_id.as_ref().filter(|s| !s.is_empty()).is_some()
-    {
+    let auth_mode = if effective_share_url.is_some() || effective_share_id.is_some() {
         AuthMode::Share
     } else {
         AuthMode::Bearer
