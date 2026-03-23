@@ -106,10 +106,16 @@ if [ "$USE_ENV_VARS" = "true" ]; then
     fi
 
     # Generate config.toml
+    # Normalize boolean values to lowercase for TOML
+    APP_DEBUG_NORM=$(echo "${APP_DEBUG:-false}" | tr '[:upper:]' '[:lower:]')
+    APP_DRY_RUN_NORM=$(echo "${APP_DRY_RUN:-false}" | tr '[:upper:]' '[:lower:]')
+    SMTP_SKIP_TLS_VERIFY_NORM=$(echo "${SMTP_SKIP_TLS_VERIFY:-false}" | tr '[:upper:]' '[:lower:]')
+    SMTP_TLS_NORM=$(echo "${SMTP_TLS:-true}" | tr '[:upper:]' '[:lower:]')
+
     cat > /etc/umami-alerts/config.toml <<EOF
 [app]
-debug = ${APP_DEBUG:-false}
-dry_run = ${APP_DRY_RUN:-false}
+debug = ${APP_DEBUG_NORM}
+dry_run = ${APP_DRY_RUN_NORM}
 max_concurrent_jobs = ${APP_MAX_CONCURRENT_JOBS:-4}
 report_type = "${APP_REPORT_TYPE:-daily}"
 
@@ -119,8 +125,8 @@ port = ${SMTP_PORT}
 username = "$(escape_toml "$SMTP_USERNAME")"
 password = "$(escape_toml "$SMTP_PASSWORD")"
 from = "$(escape_toml "$SMTP_FROM")"
-skip_verify = ${SMTP_SKIP_TLS_VERIFY:-false}
-tls = ${SMTP_TLS:-true}
+skip_verify = ${SMTP_SKIP_TLS_VERIFY_NORM}
+tls = ${SMTP_TLS_NORM}
 ${WEBSITE_CONFIG}
 EOF
 
