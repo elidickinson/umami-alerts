@@ -16,7 +16,7 @@ RUN cargo build --release
 
 FROM alpine:3.21
 
-RUN apk add --no-cache tini
+RUN apk add --no-cache tini dcron
 
 # Create config directory
 RUN mkdir -p /etc/umami-alerts
