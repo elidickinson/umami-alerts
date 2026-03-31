@@ -37,6 +37,8 @@ struct Args {
 
 #[tokio::main]
 async fn main() {
+    eprintln!("umami-alerts starting...");
+    
     // Load .env file if it exists
     let _ = dotenvy::dotenv();
 
@@ -65,6 +67,8 @@ async fn main() {
         .with_level(true)
         .init();
 
+    eprintln!("Logging initialized");
+
     // Run the application and log any errors
     if let Err(e) = run_app(args).await {
         // Log the full error hierarchy
@@ -83,6 +87,8 @@ async fn main() {
 }
 
 async fn run_app(args: Args) -> Result<()> {
+    eprintln!("run_app: checking config at {}", args.config.display());
+    
     // Load configuration - try config file first, then environment variables
     let config = if args.config.exists() {
         info!("Loading configuration from: {}", args.config.display());
@@ -90,19 +96,10 @@ async fn run_app(args: Args) -> Result<()> {
     } else if let Some(env_config) = config::env::load_from_env() {
         env_config
     } else {
-        error!("Config file not found: {}", args.config.display());
-        error!("");
-        error!("To get started, use one of these options:");
-        error!("  1. Copy the sample config: cp config.sample.toml config.toml");
-        error!("  2. Create a .env file: cp .env.example .env");
-        error!("     Then set your environment variables in .env");
-        error!("");
-        error!("Required environment variables:");
-        error!("  - SMTP_HOST, SMTP_PORT, SMTP_USERNAME, SMTP_PASSWORD, SMTP_FROM");
-        error!("  - APP_WEBSITE_1_NAME, APP_WEBSITE_1_RECIPIENTS");
-        error!("     (plus either APP_WEBSITE_1_SHARE_URL or APP_WEBSITE_1_BASE_URL + credentials)");
-        error!("");
-        error!("See .env.example for all available options.");
+        eprintln!("ERROR: Config file not found: {}", args.config.display());
+        eprintln!("ERROR: To get started, use one of these options:");
+        eprintln!("ERROR:   1. Copy the sample config: cp config.sample.toml config.toml");
+        eprintln!("ERROR:   2. Create a .env file: cp .env.example .env");
         return Err(format!("Config file not found: {}", args.config.display()).into());
     };
 
@@ -115,6 +112,7 @@ async fn run_app(args: Args) -> Result<()> {
         tracing::info!("Debug mode enabled - all logs will be shown");
     }
 
+    eprintln!("Starting umami-alerts");
     info!("Starting umami-alerts");
     debug!("Debug mode enabled");
     debug!("Report type: {:?}", config.app.report_type);
