@@ -35,7 +35,10 @@ impl UmamiClient {
     /// Apply authentication to a request builder based on auth mode
     fn apply_auth(&self, builder: reqwest::RequestBuilder, token: &str, mode: AuthMode) -> reqwest::RequestBuilder {
         match mode {
-            AuthMode::Share => builder.header("x-umami-share-token", token),
+            // Umami 3.5+ rejects a share token unless it comes with the share-context header its share pages send
+            AuthMode::Share => builder
+                .header("x-umami-share-token", token)
+                .header("x-umami-share-context", "1"),
             AuthMode::Bearer => builder.bearer_auth(token),
         }
     }
@@ -275,6 +278,8 @@ mod tests {
         let _mock = server
             .mock("GET", "/api/websites/test-id/stats")
             .match_query(mockito::Matcher::Any)
+            .match_header("x-umami-share-token", "token")
+            .match_header("x-umami-share-context", "1")
             .with_status(200)
             .with_header("content-type", "application/json")
             .with_body(stats.to_string())

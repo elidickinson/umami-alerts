@@ -8,7 +8,7 @@ use lettre::{
     },
     AsyncSmtpTransport, AsyncTransport, Tokio1Executor,
 };
-use std::sync::Arc;
+use std::{sync::Arc, time::Duration};
 use tracing::{debug, error, info};
 
 use super::{helpers, models::ReportData};
@@ -18,6 +18,10 @@ use crate::{
     config::models::{ReportType, SmtpConfig, WebsiteConfig},
     error::{AppError, Result},
 };
+
+// lettre's async transport can wait forever on a stalled SMTP server, and a hung run
+// stops cron from starting any later runs.
+const SMTP_TIMEOUT: Duration = Duration::from_secs(60);
 
 #[derive(Debug)]
 struct TimeRange {
@@ -256,15 +260,18 @@ impl ReportGenerator {
                     ),
                 )?;
 
-            match mailer.send(email).await {
-                Ok(_) => debug!("Email sent successfully to {}", recipient),
-                Err(e) => {
-                    error!("Failed to send email to {}: {}", recipient, e);
-                    return Err(AppError::Smtp(format!(
-                        "Failed to send email to {recipient}: {e}"
-                    )));
+            let err = match tokio::time::timeout(SMTP_TIMEOUT, mailer.send(email)).await {
+                Ok(Ok(_)) => {
+                    debug!("Email sent successfully to {}", recipient);
+                    continue;
                 }
-            }
+                Ok(Err(e)) => e.to_string(),
+                Err(_) => format!("timed out after {}s", SMTP_TIMEOUT.as_secs()),
+            };
+            error!("Failed to send email to {}: {}", recipient, err);
+            return Err(AppError::Smtp(format!(
+                "Failed to send email to {recipient}: {err}"
+            )));
         }
 
         Ok(())
