@@ -12,7 +12,9 @@ RUN cargo build --release --bins && rm -rf src
 # Copy actual source and rebuild (uses cached dependencies)
 COPY src/ src/
 COPY templates/ templates/
-RUN cargo build --release
+# COPY keeps the source's original mtimes, which can be older than the dummy build,
+# so without the touch cargo would keep the dummy binary
+RUN touch src/main.rs && cargo build --release
 
 FROM alpine:3.21
 
